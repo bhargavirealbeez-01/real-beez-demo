@@ -55,7 +55,7 @@ class _CustomTabBarScreenState extends State<CustomTabBarScreen> {
     Color currentColor = tabs[selectedIndex].color;
     
     return Scaffold(
-      backgroundColor: currentColor, // ✅ Top part changes with tab selection
+      backgroundColor: currentColor, 
       body: LayoutBuilder(builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
         final screenHeight = constraints.maxHeight;
