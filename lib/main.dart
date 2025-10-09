@@ -12,7 +12,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: "RealbeeZ",
+      title: "RealbeeZ", 
       theme: ThemeData(fontFamily: 'Poppins'),
       home: const SplashScreen(), 
     );

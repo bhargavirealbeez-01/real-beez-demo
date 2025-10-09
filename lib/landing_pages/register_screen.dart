@@ -118,6 +118,7 @@ class _RegisterNumberScreenState extends State<RegisterNumberScreen> {
   inputFormatters: [
     FilteringTextInputFormatter.digitsOnly,
     LengthLimitingTextInputFormatter(10), // ✅ allow max 10 digits
+    _IndianMobileFormatter(), // ✅ must start with 6-9
   ],
   style: const TextStyle(
     color: Colors.white,
@@ -139,6 +140,14 @@ class _RegisterNumberScreenState extends State<RegisterNumberScreen> {
               // Small white circle with black ">" symbol
               GestureDetector(
                 onTap: () {
+                  final phone = _phoneController.text.trim();
+                  final isValid = RegExp(r'^[6-9]\d{9}$').hasMatch(phone);
+                  if (!isValid) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Enter a valid 10-digit mobile starting with 6-9')),
+                    );
+                    return;
+                  }
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -190,5 +199,20 @@ class _RegisterNumberScreenState extends State<RegisterNumberScreen> {
       showBack: true,
       belowLogo: _buildPhoneInput(),
     );
+  }
+}
+
+// Enforces Indian mobile rule: first digit 6-9; allows interim empty/partial edits gracefully
+class _IndianMobileFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text;
+    if (text.isEmpty) return newValue; // allow clearing
+    // Block if first digit is not 6-9
+    if (text.length == 1 && !RegExp(r'^[6-9]$').hasMatch(text)) {
+      return oldValue; // reject first invalid digit
+    }
+    // Enforce digits only and max 10 is already handled by existing formatters
+    return newValue;
   }
 }

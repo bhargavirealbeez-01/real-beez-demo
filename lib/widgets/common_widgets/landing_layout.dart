@@ -72,7 +72,7 @@ class LandingLayout extends StatelessWidget {
                     SizedBox(height: top),
                     Center(
                       child: Image.asset(
-                        'assets/logo/real_beez_logo.png',
+                        'assets/logo/logo.png',
                         width: logoWidth,
                         fit: BoxFit.contain,
                       ),

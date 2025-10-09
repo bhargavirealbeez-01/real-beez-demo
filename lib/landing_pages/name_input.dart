@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:real_beez/screens/home_screen.dart';
 import 'package:real_beez/utils/app_colors.dart';
 import 'package:real_beez/widgets/common_widgets/common_button.dart';
 import 'package:real_beez/widgets/common_widgets/common_text.dart';
@@ -12,36 +13,36 @@ class NameInputPage extends StatefulWidget {
 
 class _NameInputPageState extends State<NameInputPage> {
   final TextEditingController _nameController = TextEditingController();
-  String? _errorMessage; // 👈 to store validation message
+  String? _errorMessage;
 
-  void _onSubmit() {
-    final name = _nameController.text.trim();
-    if (name.isEmpty) {
-      setState(() {
-        _errorMessage = "Please enter your name";
-      });
-      return;
-    }
+  // void _onSubmit() {
+  //   final name = _nameController.text.trim();
+  //   if (name.isEmpty) {
+  //     setState(() {
+  //       _errorMessage = "Please enter your name";
+  //     });
+  //     return;
+  //   }
 
-    setState(() {
-      _errorMessage = null; // clear error if valid
-    });
+  //   setState(() {
+  //     _errorMessage = null; // clear error if valid
+  //   });
 
-    // ✅ Navigate to Success screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const SuccessScreen(),
-      ),
-    );
-  }
+  //  
+  //   Navigator.push(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder: (_) => const SuccessScreen(),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: PreferredSize(
-  preferredSize: const Size.fromHeight(40), // reduce height
+  preferredSize: const Size.fromHeight(40), 
   child: AppBar(
     backgroundColor: AppColors.background,
     elevation: 0,
@@ -80,8 +81,6 @@ class _NameInputPageState extends State<NameInputPage> {
                 ),
               ),
             ),
-
-            // 👇 error message appears only if name is empty
             if (_errorMessage != null) ...[
               const SizedBox(height: 8),
               CommonText(
@@ -94,9 +93,16 @@ class _NameInputPageState extends State<NameInputPage> {
             const Spacer(),
             CommonButton(
               text: "Lets Started",
-              onPressed: _onSubmit,
+              //onPressed : _onSubmit,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) =>  HomeScreen()),
+                );
+              },
               backgroundColor: AppColors.beeYellow,
               textColor: AppColors.white,
+              
             ),
           ],
         ),
@@ -105,7 +111,6 @@ class _NameInputPageState extends State<NameInputPage> {
   }
 }
 
-/// ✅ Success screen (kept in the same file)
 class SuccessScreen extends StatelessWidget {
   const SuccessScreen({super.key});
 

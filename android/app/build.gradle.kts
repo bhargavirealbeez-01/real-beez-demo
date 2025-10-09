@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.real_beez"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "28.1.13356709"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -28,6 +28,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Expose Maps API key to AndroidManifest via manifestPlaceholders
+        manifestPlaceholders["MAPS_API_KEY"] =
+            (System.getenv("MAPS_API_KEY") ?: project.findProperty("MAPS_API_KEY") ?: "YOUR_ANDROID_MAPS_API_KEY")
     }
 
     buildTypes {
