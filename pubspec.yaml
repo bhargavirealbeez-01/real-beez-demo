@@ -17,6 +17,8 @@ dependencies:
   flutter_svg: ^2.0.9
   video_player: ^2.6.0
   table_calendar: ^3.1.2
+  google_fonts: ^6.1.0
+  shared_preferences: ^2.3.2
 
   # Location & maps
   google_maps_flutter: ^2.13.1

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:real_beez/splash_screen.dart';
+import 'package:real_beez/screens/landing_pages/splash_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,9 +12,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: "RealbeeZ", 
+      title: "RealbeeZ",
       theme: ThemeData(fontFamily: 'Poppins'),
-      home: const SplashScreen(), 
+      home: const SplashScreen(),
     );
   }
 }

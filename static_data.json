@@ -10,6 +10,7 @@
     "area_sq_ft": 980,
     "bedrooms": 2,
     "bathrooms": 2,
+    
     "furnishing": "unfurnished",
     "amenities": [
       "parking",
