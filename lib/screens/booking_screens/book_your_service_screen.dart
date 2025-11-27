@@ -467,20 +467,32 @@ class _BookServiceScreenState extends State<BookServiceScreen> {
         child: Column(
           children: [
             // ---------------- AppBar ----------------
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Icon(Icons.arrow_back, color: Colors.black),
-                  const Text(
-                    "Book Your Services",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                 
-                ],
-              ),
-            ),
+           Stack(
+  alignment: Alignment.center,
+  children: [
+    // Back arrow aligned to the start
+    Align(
+      alignment: Alignment.centerLeft,
+      child: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black),
+        onPressed: () {
+          Navigator.pop(context); 
+        },
+      ),
+    ),
+
+    // Centered text
+    const Text(
+      "Book Your Services",
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Colors.black,
+      ),
+    ),
+  ],
+)
+,
 
             Expanded(
               child: SingleChildScrollView(

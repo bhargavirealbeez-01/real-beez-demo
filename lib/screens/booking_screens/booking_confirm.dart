@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:real_beez/screens/api/cab_service.dart';
 import 'package:real_beez/screens/homescreen/home_screen.dart';
+import 'package:real_beez/screens/models/booking_model.dart';
 import 'package:real_beez/utils/app_colors.dart';
+
 
 void main() {
   runApp(const BookingApp());
@@ -30,14 +33,55 @@ class BookingConfirmationScreen extends StatefulWidget {
 
 class _BookingConfirmationScreenState
     extends State<BookingConfirmationScreen> {
-  static const CameraPosition _initialPosition = CameraPosition(
-    target: LatLng(40.6892, -74.0445),
-    zoom: 14.0,
-  );
 
   bool _showRescheduleUI = false;
   bool _showCompletionDialog = false;
   String _completionType = ""; // "reschedule" or "cancel"
+  bool _isLoading = true;
+  BookingModel? _currentBooking;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchBookings();
+  }
+
+  Future<void> _fetchBookings() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final response = await CabService.getCabBookings();
+      final List<BookingModel> bookings = response.map<BookingModel>((booking) {
+        return BookingModel.fromJson(booking);
+      }).toList();
+
+      setState(() {
+        // Use the first booking as current booking for demo
+        // In real app, you might pass a specific booking ID
+        if (bookings.isNotEmpty) {
+          _currentBooking = bookings.firstWhere(
+            (booking) => booking.status == 'booked',
+            orElse: () => bookings.first,
+          );
+        }
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error fetching bookings: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load booking details: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   void _showCompletionPopup(String type) {
     setState(() {
@@ -53,10 +97,94 @@ class _BookingConfirmationScreenState
     });
   }
 
+  // Extract coordinates from location string (basic implementation)
+  LatLng _extractCoordinates(String location) {
+    // This is a simple implementation - you might need more sophisticated parsing
+    if (location.contains("Noida")) {
+      return const LatLng(28.6292, 77.3747); // Noida coordinates
+    } else if (location.contains("Delhi")) {
+      return const LatLng(28.6139, 77.2090); // Delhi coordinates
+    } else if (location.contains("Airport")) {
+      return const LatLng(28.5562, 77.1000); // Airport coordinates
+    } else {
+      return const LatLng(40.6892, -74.0445); // Default coordinates
+    }
+  }
+
+  String _formatDate(String dateString) {
+    try {
+      final parts = dateString.split('-');
+      if (parts.length == 3) {
+        return '${parts[2]}/${parts[1]}/${parts[0]}';
+      }
+      return dateString;
+    } catch (e) {
+      return dateString;
+    }
+  }
+
+  String _formatTime(String timeString) {
+    try {
+      final parts = timeString.split(':');
+      if (parts.length >= 2) {
+        int hour = int.parse(parts[0]);
+        String period = hour >= 12 ? 'PM' : 'AM';
+        if (hour > 12) hour -= 12;
+        if (hour == 0) hour = 12;
+        return '$hour:${parts[1]} $period';
+      }
+      return timeString;
+    } catch (e) {
+      return timeString;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final mapHeight = screenHeight * 0.32;
+
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.grey[100],
+        body: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.beeYellow),
+          ),
+        ),
+      );
+    }
+
+    if (_currentBooking == null) {
+      return Scaffold(
+        backgroundColor: Colors.grey[100],
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: Colors.grey),
+              SizedBox(height: 16),
+              Text(
+                'No booking found',
+                style: TextStyle(fontSize: 18, color: Colors.grey),
+              ),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _fetchBookings,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.beeYellow,
+                ),
+                child: Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final booking = _currentBooking!;
+    final pickupCoords = _extractCoordinates(booking.pickupLocation);
+    final dropCoords = _extractCoordinates(booking.dropLocation);
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -74,22 +202,25 @@ class _BookingConfirmationScreenState
                         height: mapHeight,
                         width: double.infinity,
                         child: GoogleMap(
-                          initialCameraPosition: _initialPosition,
+                          initialCameraPosition: CameraPosition(
+                            target: pickupCoords,
+                            zoom: 14.0,
+                          ),
                           mapType: MapType.normal,
                           zoomControlsEnabled: false,
                           myLocationButtonEnabled: false,
                           markers: {
                             Marker(
                               markerId: const MarkerId('pickup'),
-                              position: const LatLng(40.6892, -74.0445),
-                              infoWindow: const InfoWindow(title: 'Liberty'),
+                              position: pickupCoords,
+                              infoWindow: InfoWindow(title: booking.pickupLocation),
                               icon: BitmapDescriptor.defaultMarkerWithHue(
                                   BitmapDescriptor.hueOrange),
                             ),
                             Marker(
                               markerId: const MarkerId('destination'),
-                              position: const LatLng(40.6895, -74.0448),
-                              infoWindow: const InfoWindow(title: 'SMR Buildings'),
+                              position: dropCoords,
+                              infoWindow: InfoWindow(title: booking.dropLocation),
                               icon: BitmapDescriptor.defaultMarkerWithHue(
                                   BitmapDescriptor.hueBlue),
                             ),
@@ -99,10 +230,7 @@ class _BookingConfirmationScreenState
                               polylineId: const PolylineId('route'),
                               color: Colors.blue,
                               width: 4,
-                              points: const [
-                                LatLng(40.6892, -74.0445),
-                                LatLng(40.6895, -74.0448),
-                              ],
+                              points: [pickupCoords, dropCoords],
                             ),
                           },
                         ),
@@ -122,26 +250,25 @@ class _BookingConfirmationScreenState
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  // ignore: deprecated_member_use
                                   color: Colors.black.withOpacity(0.1),
                                   blurRadius: 6,
                                   offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 CircleAvatar(
                                   radius: 10,
-                                  backgroundColor: Colors.green,
-                                  child: Icon(Icons.check,
+                                  backgroundColor: _getStatusColor(booking.status),
+                                  child: Icon(_getStatusIcon(booking.status),
                                       size: 14, color: Colors.white),
                                 ),
-                                SizedBox(width: 8),
+                                const SizedBox(width: 8),
                                 Text(
-                                  "Booking Confirmed",
-                                  style: TextStyle(
+                                  _getStatusText(booking.status),
+                                  style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.black,
@@ -230,9 +357,9 @@ class _BookingConfirmationScreenState
                                                   ),
                                                 ),
                                                 const SizedBox(height: 2),
-                                                const Text(
-                                                  "Innova Crysta",
-                                                  style: TextStyle(
+                                                Text(
+                                                  booking.carModel,
+                                                  style: const TextStyle(
                                                     fontSize: 15,
                                                     color: Colors.white70,
                                                   ),
@@ -255,11 +382,31 @@ class _BookingConfirmationScreenState
                                           ),
                                           child: _showRescheduleUI
                                               ? RescheduleUI(
-                                                  onRescheduleComplete: (date, time) {
-                                                    _showCompletionPopup("reschedule");
+                                                  bookingId: booking.bookingId,
+                                                  onRescheduleComplete: (date, time) async {
+                                                    // Call API to reschedule
+                                                    final result = await CabService.rescheduleBooking(
+                                                      booking.bookingId,
+                                                      "Customer requested reschedule",
+                                                      date,
+                                                      time,
+                                                    );
+                                                    
+                                                    if (result["success"] == true) {
+                                                      _showCompletionPopup("reschedule");
+                                                      // Refresh bookings
+                                                      _fetchBookings();
+                                                    } else {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(result["message"]),
+                                                          backgroundColor: Colors.red,
+                                                        ),
+                                                      );
+                                                    }
                                                   },
                                                 )
-                                              : _bookingDetailsUI(context),
+                                              : _bookingDetailsUI(context, booking),
                                         ),
                                       ],
                                     ),
@@ -272,10 +419,10 @@ class _BookingConfirmationScreenState
                                 top: 30,
                                 right: 20,
                                 child: Transform.rotate(
-                                  angle: -0.1,
+                                  angle: 0,
                                   child: Image.asset(
-                                    "assets/images/car.png",
-                                    height: 120,
+                                    _getCarImage(booking.vehicleType),
+                                    height: 90,
                                     fit: BoxFit.contain,
                                   ),
                                 ),
@@ -302,13 +449,64 @@ class _BookingConfirmationScreenState
     );
   }
 
+  // Helper methods for status and images
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'booked':
+        return Colors.green;
+      case 'rescheduled':
+        return Colors.orange;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Colors.green;
+    }
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case 'booked':
+        return Icons.check;
+      case 'rescheduled':
+        return Icons.schedule;
+      case 'cancelled':
+        return Icons.close;
+      default:
+        return Icons.check;
+    }
+  }
+
+  String _getStatusText(String status) {
+    switch (status) {
+      case 'booked':
+        return "Booking Confirmed";
+      case 'rescheduled':
+        return "Booking Rescheduled";
+      case 'cancelled':
+        return "Booking Cancelled";
+      default:
+        return "Booking Confirmed";
+    }
+  }
+
+  String _getCarImage(String vehicleType) {
+    switch (vehicleType.toLowerCase()) {
+      case 'suv':
+        return "assets/images/innova.png";
+      case 'sedan':
+        return "assets/images/sedan.png";
+      default:
+        return "assets/images/car.png";
+    }
+  }
+
   /// ---------------- Booking Details UI ----------------
-  Widget _bookingDetailsUI(BuildContext context) {
+  Widget _bookingDetailsUI(BuildContext context, BookingModel booking) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Booking ID: QWE123456567",
+          "Booking ID: ${booking.bookingId}",
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
@@ -316,109 +514,132 @@ class _BookingConfirmationScreenState
           ),
         ),
         const SizedBox(height: 16),
-        const LocationBuildingTile(
+        LocationBuildingTile(
           icon: Icons.location_on,
           iconColor: AppColors.beeYellow,
-          label: "Liberty (40.6892° N, 74.0445° W)",
+          label: booking.pickupLocation,
         ),
         const SizedBox(height: 10),
-        const LocationBuildingTile(
+        LocationBuildingTile(
           icon: Icons.apartment,
-          iconColor: Color(0xFFABABAB),
-          label: "SMR Buildings",
+          iconColor: const Color(0xFFABABAB),
+          label: booking.dropLocation,
         ),
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _infoTile(icon: Icons.group, label: "Members", value: "6"),
             _infoTile(
-                icon: Icons.calendar_today,
-                label: "25/09/2025",
-                value: "9:00 AM"),
+              icon: Icons.group, 
+              label: "Members", 
+              value: "${booking.passengerCount}"
+            ),
+            _infoTile(
+              icon: Icons.calendar_today,
+              label: _formatDate(booking.bookingDate),
+              value: _formatTime(booking.bookingTime),
+            ),
             _infoTile(icon: Icons.headset_mic, label: "Support"),
           ],
         ),
         const SizedBox(height: 80),
         
-        // Separated Cancel and Reschedule Buttons
-   Row(
-  children: [
-    // Cancel Button - White background with black text
-    Expanded(
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white, // White background
-          foregroundColor: Colors.black, // Black text color
-          padding: const EdgeInsets.symmetric(vertical: 18), // Increased vertical padding
-          minimumSize: const Size.fromHeight(50), // Set minimum height
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: AppColors.beeYellow), // Yellow border
-          ),
-          elevation: 2,
-          shadowColor: Colors.black.withOpacity(0.1),
-        ),
-        onPressed: () {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => CancelBookingPopup(
-              onCancelBooking: () {
-                Navigator.of(context).pop();
-                _showCompletionPopup("cancel");
-              },
+        // Action Buttons - KEEPING ORIGINAL UI STRUCTURE
+        Row(
+          children: [
+            // Cancel Button - White background with black text
+            Expanded(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white, // White background
+                  foregroundColor: Colors.black, // Black text color
+                  padding: const EdgeInsets.symmetric(vertical: 12), // Increased vertical padding
+                  minimumSize: const Size.fromHeight(50), // Set minimum height
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: AppColors.beeYellow), // Yellow border
+                  ),
+                  elevation: 2,
+                  shadowColor: Colors.black.withOpacity(0.1),
+                ),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => CancelBookingPopup(
+                      bookingId: booking.bookingId,
+                      onCancelBooking: () async {
+                        Navigator.of(context).pop();
+                        // Call API to cancel booking
+                        final result = await CabService.cancelBooking(
+                          booking.bookingId,
+                          "Customer requested cancellation",
+                        );
+                        
+                        if (result["success"] == true) {
+                          _showCompletionPopup("cancel");
+                          // Refresh bookings
+                          _fetchBookings();
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(result["message"]),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  );
+                },
+                child: const Text(
+                  "Cancel",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.normal,
+                    color: Colors.black, // Black text
+                  ),
+                ),
+              ),
             ),
-          );
-        },
-        child: const Text(
-          "Cancel",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.normal,
-            color: Colors.black, // Black text
-          ),
-        ),
-      ),
-    ),
-    const SizedBox(width: 12),
-    // Reschedule Button - Yellow background with white text
-    Expanded(
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.beeYellow, // Yellow background
-          padding: const EdgeInsets.symmetric(vertical: 18), // Increased vertical padding
-          minimumSize: const Size.fromHeight(50), // Set minimum height
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 2,
-          shadowColor: Colors.black.withOpacity(0.2),
-        ),
-        onPressed: () {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => ReschedulePopup(
-              onRescheduleNow: () {
-                Navigator.of(context).pop();
-                setState(() => _showRescheduleUI = true);
-              },
+            const SizedBox(width: 12),
+            // Reschedule Button - Yellow background with white text
+            Expanded(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.beeYellow, // Yellow background
+                  padding: const EdgeInsets.symmetric(vertical: 12), // Increased vertical padding
+                  minimumSize: const Size.fromHeight(50), // Set minimum height
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                  shadowColor: Colors.black.withOpacity(0.2),
+                ),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => ReschedulePopup(
+                      onRescheduleNow: () {
+                        Navigator.of(context).pop();
+                        setState(() => _showRescheduleUI = true);
+                      },
+                    ),
+                  );
+                },
+                child: const Text(
+                  "Reschedule Booking",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.normal,
+                    color: Colors.white, // White text
+                  ),
+                ),
+              ),
             ),
-          );
-        },
-        child: const Text(
-          "Reschedule Booking",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.normal,
-            color: Colors.white, // White text
-          ),
+          ],
         ),
-      ),
-    ),
-  ],
-),
       ],
     );
   }
@@ -617,7 +838,12 @@ class LocationBuildingTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(12),
+       border: Border.all(
+  color: Colors.grey,
+  width: 1.0,
+),
+
         boxShadow: const [
           BoxShadow(
             color: Color(0x8CE8E8E8),
@@ -651,10 +877,12 @@ class LocationBuildingTile extends StatelessWidget {
 // 🔸 Separate Cancel Booking Popup
 // -----------------------------------------------------------------------------
 class CancelBookingPopup extends StatefulWidget {
+  final String bookingId;
   final VoidCallback onCancelBooking;
   
   const CancelBookingPopup({
     super.key, 
+    required this.bookingId,
     required this.onCancelBooking,
   });
 
@@ -922,9 +1150,14 @@ class _ReschedulePopupState extends State<ReschedulePopup> {
 }
 
 class RescheduleUI extends StatefulWidget {
+  final String bookingId;
   final Function(String, String) onRescheduleComplete;
   
-  const RescheduleUI({super.key, required this.onRescheduleComplete});
+  const RescheduleUI({
+    super.key, 
+    required this.bookingId,
+    required this.onRescheduleComplete
+  });
 
   @override
   State<RescheduleUI> createState() => _RescheduleUIState();
@@ -1158,10 +1391,12 @@ class _RescheduleUIState extends State<RescheduleUI> {
               ),
               onPressed: _selectedTimeSlot != null
                   ? () {
-                      widget.onRescheduleComplete(
-                        "$_selectedDate $_selectedMonth $_selectedYear",
-                        _selectedTimeSlot!
-                      );
+                      // Format date for API (YYYY-MM-DD)
+                      String formattedDate = "$_selectedYear-${_getMonthNumber(_selectedMonth)}-${_selectedDate.toString().padLeft(2, '0')}";
+                      // Format time for API (HH:MM)
+                      String formattedTime = _formatTimeForAPI(_selectedTimeSlot!);
+                      
+                      widget.onRescheduleComplete(formattedDate, formattedTime);
                     }
                   : null,
               child: Text(
@@ -1175,5 +1410,24 @@ class _RescheduleUIState extends State<RescheduleUI> {
         ],
       ),
     );
+  }
+
+  String _getMonthNumber(String month) {
+    final months = {
+      'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+      'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+      'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+    };
+    return months[month] ?? '10';
+  }
+
+  String _formatTimeForAPI(String timeSlot) {
+    // Convert "09:00 AM" to "09:00"
+    try {
+      final parts = timeSlot.split(' ');
+      return parts[0];
+    } catch (e) {
+      return timeSlot;
+    }
   }
 }
